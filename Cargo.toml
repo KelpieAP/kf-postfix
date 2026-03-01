@@ -1,0 +1,8 @@
+[package]
+name = "kf-postfix"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+eframe = "0.24"
+winapi = { version = "0.3", features = ["winuser", "windef", "libloaderapi"] }
