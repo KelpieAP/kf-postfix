@@ -14,31 +14,41 @@ fn precedencia(op: &Token) -> u8 {
     }
 }
 
-//self.tokens = lex_program(self.documents[self.active_tab].content.as_str());
 
 pub fn infija_a_postfija(infija: &str) -> Vec<Token> {
     let tokens = lex_program(infija);
-    dbg!(&tokens);
+    //dbg!(&tokens);
     let mut postfija: Vec<Token> = Vec::new();
     let mut pila: Vec<Token> = Vec::new();
     let mut buffer_termino: Vec<Token> = Vec::new();
 
+    let mut prev_op = false;
+
     for token in tokens {
         if token.token.name() == "Identifier" || token.token.name() == "IntegerLiteral" || token.token.name() == "FloatLiteral" {
             buffer_termino.push(token.token);
+            prev_op = true;
         } else {
             if !buffer_termino.is_empty() {
                 postfija.append(&mut buffer_termino);
-                //buffer_termino.clear();
             }
 
             match token.token {
-                Token::LeftParen => pila.push(token.token),
+                Token::Minus if !prev_op => {
+                    postfija.push(Token::IntegerLiteral(0));
+                    pila.push(token.token);
+                    prev_op = false;
+                }
+                Token::LeftParen => {
+                    pila.push(token.token);
+                    prev_op = false;
+                }
                 Token::RightParen => {
                     while let Some(top) = pila.pop() {
                         if top == Token::LeftParen { break; }
                         postfija.push(top);
                     }
+                    prev_op = true;
                 },
                 Token::Plus | Token::Minus | Token::Mult | Token::By | Token::Expo => {
                     while let Some(top) = pila.last() {
@@ -50,6 +60,7 @@ pub fn infija_a_postfija(infija: &str) -> Vec<Token> {
                         }
                     }
                     pila.push(token.token);
+                    prev_op = false;
                 },
                 _ => {} 
             }
