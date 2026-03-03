@@ -19,14 +19,16 @@ fn precedencia(op: &Token) -> u8 {
 pub fn infija_a_postfija(infija: &str) -> Vec<Token> {
     let tokens = lex_program(infija);
     dbg!(&tokens);
-    let mut postfija: Vec<Token> = Vec::new();
-    let mut pila: Vec<Token> = Vec::new();
-    let mut buffer_termino: Vec<Token> = Vec::new();
+    let mut postfija: Vec<Token> = Vec::new(); //resultado final
+    let mut pila: Vec<Token> = Vec::new(); //retiene operadores temporalmente
+    let mut buffer_termino: Vec<Token> = Vec::new(); //agrupa cosas que no son operadores
 
     for token in tokens {
+        //guarda numeros o variables
         if token.token.name() == "Identifier" || token.token.name() == "IntegerLiteral" || token.token.name() == "FloatLiteral" {
             buffer_termino.push(token.token);
         } else {
+            //detecta operador, se vacia
             if !buffer_termino.is_empty() {
                 postfija.append(&mut buffer_termino);
                 //buffer_termino.clear();
@@ -34,12 +36,14 @@ pub fn infija_a_postfija(infija: &str) -> Vec<Token> {
 
             match token.token {
                 Token::LeftParen => pila.push(token.token),
+                //cuando cerramos parentesis se saca los operadores
                 Token::RightParen => {
                     while let Some(top) = pila.pop() {
                         if top == Token::LeftParen { break; }
                         postfija.push(top);
                     }
                 },
+                //se acomodan operadores
                 Token::Plus | Token::Minus | Token::Mult | Token::By | Token::Expo => {
                     while let Some(top) = pila.last() {
                         if *top == Token::LeftParen { break; }
