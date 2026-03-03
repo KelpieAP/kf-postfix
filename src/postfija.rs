@@ -1,46 +1,55 @@
-fn precedencia(op: char) -> u8 {
+use std::collections::HashMap;
+
+use kf_compiler::{
+    lex_program,
+    Token
+};
+
+fn precedencia(op: &Token) -> u8 {
     match op {
-        '+' | '-' => 1,
-        '*' | '/' => 2,
-        '^' => 3,
+        Token::Plus | Token::Minus => 1,
+        Token::Mult | Token::By => 2,
+        Token::Expo => 3,
         _ => 0,
     }
 }
 
-pub fn infija_a_postfija(infija: &str) -> String {
-    let mut postfija = Vec::new();
-    let mut pila: Vec<char> = Vec::new();
-    let mut buffer_termino = String::new();
+//self.tokens = lex_program(self.documents[self.active_tab].content.as_str());
 
-    for c in infija.chars() {
-        if c.is_whitespace() { continue; }
+pub fn infija_a_postfija(infija: &str) -> Vec<Token> {
+    let tokens = lex_program(infija);
+    dbg!(&tokens);
+    let mut postfija: Vec<Token> = Vec::new();
+    let mut pila: Vec<Token> = Vec::new();
+    let mut buffer_termino: Vec<Token> = Vec::new();
 
-        if c.is_alphanumeric() {
-            buffer_termino.push(c);
+    for token in tokens {
+        if token.token.name() == "Identifier" || token.token.name() == "IntegerLiteral" || token.token.name() == "FloatLiteral" {
+            buffer_termino.push(token.token);
         } else {
             if !buffer_termino.is_empty() {
-                postfija.push(buffer_termino.clone());
-                buffer_termino.clear();
+                postfija.append(&mut buffer_termino);
+                //buffer_termino.clear();
             }
 
-            match c {
-                '(' => pila.push(c),
-                ')' => {
+            match token.token {
+                Token::LeftParen => pila.push(token.token),
+                Token::RightParen => {
                     while let Some(top) = pila.pop() {
-                        if top == '(' { break; }
-                        postfija.push(top.to_string());
+                        if top == Token::LeftParen { break; }
+                        postfija.push(top);
                     }
                 },
-                '+' | '-' | '*' | '/' | '^' => {
-                    while let Some(&top) = pila.last() {
-                        if top == '(' { break; }
-                        if precedencia(top) >= precedencia(c) {
-                            postfija.push(pila.pop().unwrap().to_string());
+                Token::Plus | Token::Minus | Token::Mult | Token::By | Token::Expo => {
+                    while let Some(top) = pila.last() {
+                        if *top == Token::LeftParen { break; }
+                        if precedencia(top) >= precedencia(&token.token) {
+                            postfija.push(pila.pop().unwrap());
                         } else {
                             break;
                         }
                     }
-                    pila.push(c);
+                    pila.push(token.token);
                 },
                 _ => {} 
             }
@@ -48,13 +57,96 @@ pub fn infija_a_postfija(infija: &str) -> String {
     }
 
     if !buffer_termino.is_empty() {
-        postfija.push(buffer_termino);
+        postfija.append(&mut buffer_termino);
     }
 
     while let Some(op) = pila.pop() {
-        if op != '(' {
-            postfija.push(op.to_string());
+        if op != Token::LeftParen {
+            postfija.push(op);
         }
     }
-    postfija.join(" ")
+    postfija
+}
+
+
+pub fn token_vec_to_string(vec: &Vec<Token>) -> String {
+    let mut res: String = String::new();
+    for token in vec {
+        res += &(token.value() + " ");
+    }
+
+    res
+}
+
+pub fn get_identifiers(vec: &[Token]) -> Vec<String> {
+    let mut ids = Vec::new();
+    for token in vec {
+        if token.name() == "Identifier" {
+            let name = token.value();
+            if !ids.contains(&name) {
+                ids.push(name);
+            }
+        }
+    }
+    ids
+}
+
+pub fn eval_postfix(vec: &[Token], vars: &HashMap<String, f32>) -> Result<f32, String> {
+    let mut stack: Vec<f32> = Vec::new();
+
+    for token in vec {
+        
+
+        if token.name() == "Identifier" {
+            match vars.get(&token.value()) {
+                Some(&val) => stack.push(val),
+                None => return Err(format!("Variable '{}' sin valor", token.value())),
+            }
+        } else if token.name() == "IntegerLiteral" || token.name() == "FloatLiteral" {
+            match token.value().parse::<f32>() {
+                Ok(val) => stack.push(val),
+                Err(_)=> return Err(format!("Error con {}", token.value())),
+            }
+        } else {
+
+            let result = match token {
+                Token::Plus => {
+                    if stack.len() < 2 {
+                        stack.pop().ok_or("Stack vacío")?
+                    } else {
+                        let val2 = stack.pop().unwrap();
+                        let val1 = stack.pop().unwrap();
+                        val1 + val2
+                    }
+                }
+                Token::Minus => {
+                    if stack.len() < 2 {
+                        -stack.pop().ok_or("Stack vacío")?
+                    } else {
+                        let val2 = stack.pop().unwrap();
+                        let val1 = stack.pop().unwrap();
+                        val1 - val2
+                    }
+                }
+                _ => {
+                    let val2 = stack.pop().ok_or("Stack vacio")?;
+                    let val1 = stack.pop().ok_or("Stack vacio")?;
+                    match token {
+                        Token::Mult => {
+                            val1 * val2
+                        }
+                        Token::By => {
+                            val1 / val2
+                        }
+                        Token::Expo => {
+                            val1.powf(val2)
+                        },
+                        _ => return Err("Operador desconocido".to_string()),
+                    }
+                }
+            };
+            stack.push(result);
+        }
+    }
+    stack.pop().ok_or("Expresión inválida".to_string())
 }
