@@ -109,8 +109,7 @@ pub fn eval_postfix(vec: &[Token], vars: &HashMap<String, f32>) -> Result<f32, S
     let mut stack: Vec<f32> = Vec::new();
 
     for token in vec {
-        
-
+        // checar valores
         if token.name() == "Identifier" {
             match vars.get(&token.value()) {
                 Some(&val) => stack.push(val),
