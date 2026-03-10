@@ -7,11 +7,12 @@ use kf_compiler::{
 };
 
 mod postfija; 
+mod prefija; // <-- Agregado el módulo prefija
 
 fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([600.0, 400.0]),
+            .with_inner_size([600.0, 500.0]), // Aumenté un poco el alto para que quepa la prefija
         ..Default::default()
     };
 
@@ -24,8 +25,10 @@ fn main() -> Result<(), eframe::Error> {
 
 struct MyApp {
     input_text: String,
+    prefija_result: String, // <-- Agregado
     postfix_result: String,
     eval_result: String,
+    prefija_result_vec: Vec<Token>, // <-- Agregado
     postfix_result_vec: Vec<Token>,
     var_inputs: HashMap<String, String>,
 }
@@ -34,8 +37,10 @@ impl Default for MyApp {
     fn default() -> Self {
         Self {
             input_text: "".to_owned(),
+            prefija_result: "".to_owned(), // <-- Agregado
             postfix_result: "".to_owned(),
             eval_result: "".to_owned(),
+            prefija_result_vec: Vec::new(), // <-- Agregado
             postfix_result_vec: Vec::new(),
             var_inputs: HashMap::new(),
         }
@@ -59,15 +64,32 @@ impl eframe::App for MyApp {
 
                 ui.horizontal(|ui| {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        // El mismo botón convierte ambas
                         if ui.button("Convertir").clicked() {
+                            // Lógica Postfija
                             self.postfix_result_vec = postfija::infija_a_postfija(&self.input_text);
                             self.postfix_result = postfija::token_vec_to_string(&self.postfix_result_vec);
+
+                            // Lógica Prefija <-- Agregado
+                            self.prefija_result_vec = prefija::infija_a_prefija(&self.input_text);
+                            self.prefija_result = prefija::token_vec_to_string(&self.prefija_result_vec);
                         }
                     });
                 });
 
                 ui.add_space(20.0);
 
+                // --- TEXTBOX PREFIJA --- <-- Agregado
+                ui.label("Prefija:");
+                ui.add_sized(
+                    [ui.available_width() - 40.0, 30.0],
+                    egui::TextEdit::singleline(&mut self.prefija_result)
+                        .interactive(true),
+                );
+
+                ui.add_space(20.0);
+
+                // --- TEXTBOX POSTFIJA ---
                 ui.label("Postfija:");
                 ui.add_sized(
                     [ui.available_width() - 40.0, 30.0],
