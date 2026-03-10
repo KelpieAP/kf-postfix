@@ -17,7 +17,6 @@ fn precedencia(op: &Token) -> u8 {
 pub fn infija_a_prefija(infija: &str) -> Vec<Token> {
     let mut tokens = lex_program(infija);
     
-    // PASO 1: Invertir tokens y cambiar de lado los paréntesis
     tokens.reverse();
     for t in &mut tokens {
         match t.token {
@@ -52,7 +51,6 @@ pub fn infija_a_prefija(infija: &str) -> Vec<Token> {
                 Token::Plus | Token::Minus | Token::Mult | Token::By | Token::Expo => {
                     while let Some(top) = pila.last() {
                         if *top == Token::LeftParen { break; }
-                        // NOTA CLAVE: En prefija se compara con MAYOR estricto (>)
                         if precedencia(top) > precedencia(&token.token) {
                             prefija.push(pila.pop().unwrap());
                         } else {
@@ -76,7 +74,6 @@ pub fn infija_a_prefija(infija: &str) -> Vec<Token> {
         }
     }
 
-    // PASO 2: Invertir el resultado final
     prefija.reverse();
     prefija
 }
@@ -105,7 +102,6 @@ pub fn get_identifiers(vec: &[Token]) -> Vec<String> {
 pub fn eval_prefix(vec: &[Token], vars: &HashMap<String, f32>) -> Result<f32, String> {
     let mut stack: Vec<f32> = Vec::new();
 
-    // NOTA CLAVE: La prefija se evalúa leyendo de DERECHA a IZQUIERDA (.rev())
     for token in vec.iter().rev() {
         
         if token.name() == "Identifier" {
@@ -125,7 +121,6 @@ pub fn eval_prefix(vec: &[Token], vars: &HashMap<String, f32>) -> Result<f32, St
                     if stack.len() < 2 {
                         stack.pop().ok_or("Stack vacío")?
                     } else {
-                        // En prefija, al leer al revés, el val1 sale primero de la pila
                         let val1 = stack.pop().unwrap();
                         let val2 = stack.pop().unwrap();
                         val1 + val2
